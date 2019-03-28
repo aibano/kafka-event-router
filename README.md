@@ -1,5 +1,5 @@
 ## Custom SMT
-* Transform and re-route message to different topic depends on event aggregate type.
+Transform and re-route message to different topic depends on event aggregate type.
 
 ### Setup Confluent Kafka
 
