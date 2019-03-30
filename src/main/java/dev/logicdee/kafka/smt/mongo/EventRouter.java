@@ -47,17 +47,25 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
             try {
                 Long timestamp = struct.getInt64("ts_ms");
                 String after = struct.getString("after");
-                Event event = mapper.readValue(after, Event.class);
+                MongoEvent mongoEvent = mapper.readValue(after, MongoEvent.class);
 
-                logger.debug("Received event {}", event);
-                String key = event.getAggregateId();
-                String topic = event.getAggregateType() + "Events";
+                logger.debug("Received mongoEvent {}", mongoEvent);
+                String key = mongoEvent.getAggregateId();
+                String topic = mongoEvent.getAggregateType() + "Events";
 
-                String eventId = event.getId().toString();
+                Event event = new Event();
+                event.setId(mongoEvent.getId());
+                event.setAggregateId(mongoEvent.getAggregateId());
+                event.setAggregateType(mongoEvent.getAggregateType());
+                event.setType(mongoEvent.getType());
+                if (mongoEvent.getPayload() != null && !mongoEvent.getPayload().isEmpty()) {
+                    Map payload = mapper.readValue(mongoEvent.getPayload(), Map.class);
+                    event.setPayload(payload);
+                }
                 String value = mapper.writeValueAsString(event);
 
                 Headers headers = record.headers();
-                headers.addString(EVENT_ID, eventId);
+                headers.addString(EVENT_ID, mongoEvent.getId());
                 logger.info("Route message key {} value {} to topic {}", key, value, topic);
                 return record.newRecord(topic, null, Schema.STRING_SCHEMA, key, Schema.STRING_SCHEMA, value, record.timestamp(), headers);
             } catch (IOException e) {

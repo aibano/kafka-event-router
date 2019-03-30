@@ -1,11 +1,16 @@
 package dev.logicdee.kafka.smt.mongo;
 
-public class Event {
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class MongoEvent {
+    @JsonProperty("_id")
     private String id;
     private String aggregateId;
     private String aggregateType;
     private String type;
-    private Object payload;
+    private String payload;
 
     public String getId() {
         return id;
@@ -39,11 +44,11 @@ public class Event {
         this.type = type;
     }
 
-    public Object getPayload() {
+    public String getPayload() {
         return payload;
     }
 
-    public void setPayload(Object payload) {
+    public void setPayload(String payload) {
         this.payload = payload;
     }
 }

@@ -17,7 +17,7 @@ docker-compose -f docker-compose.yml up
 
 Download connector plugin
 ```
-docker exect -it connect bash
+docker exec -it connect bash
 wget https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/0.9.3.Final/debezium-connector-mongodb-0.9.3.Final-plugin.tar.gz
 ```
 
@@ -42,13 +42,19 @@ gradle clean build
 
 Create a directory for custom smt in plugin directory
 ```
+docker exec -it connect bash
 cd /usr/share/java
 mkdir kafka-smt
 ```
 
 Copy smt jar to custom smt directory in the connector container
 ```
-docker cp smt/build/libs/smt-1.0.0-SNAPSHOT.jar connect:/usr/share/java/kafka-smt
+docker cp build/libs/kafka-smt-1.0.0-SNAPSHOT.jar connect:/usr/share/java/kafka-smt
+```
+
+Restart kafka connector
+```
+docker restart connect
 ```
 
 Create Debezium mongodb connector
@@ -67,18 +73,13 @@ curl -X POST \
         "mongodb.hosts" : "rs0/mongo1:27017",
         "mongodb.name" : "logicdee",
         "database.whitelist" : "lduser",
-        "collection.whitelist": "lduser.outbox",
+        "collection.whitelist": "lduser.events",
         "database.history.kafka.bootstrap.servers" : "broker:9092",
         "transforms" : "router",
         "transforms.router.type" : "dev.logicdee.kafka.smt.mongo.EventRouter"
     }
 }
 '
-```
-
-Restart kafka connector
-```
-docker restart connect
 ```
 
 Reference
