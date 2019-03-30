@@ -2,6 +2,7 @@ package dev.logicdee.kafka.smt.mongo;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Event {
@@ -11,6 +12,8 @@ public class Event {
     private String aggregateType;
     private String type;
     private Object payload;
+    @JsonProperty("_class")
+    private String className;
 
     public ObjectId getId() {
         return id;
@@ -52,6 +55,14 @@ public class Event {
         this.payload = payload;
     }
 
+    public String getClassName() {
+        return className;
+    }
+
+    public void setClassName(String className) {
+        this.className = className;
+    }
+
     public static class ObjectId {
         @JsonProperty("$oid")
         private String id;
@@ -65,6 +76,7 @@ public class Event {
         }
 
         @Override
+        @JsonValue
         public String toString() {
             return id;
         }

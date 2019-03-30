@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.transforms.Transformation;
@@ -15,6 +14,8 @@ import java.io.IOException;
 import java.util.Map;
 
 public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R> {
+    public static final String EVENT_ID = "_EventId_";
+
     private static final Logger logger = LoggerFactory.getLogger(EventRouter.class);
     private static final ObjectMapper mapper = new ObjectMapper();
 
@@ -48,29 +49,17 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
                 String after = struct.getString("after");
                 Event event = mapper.readValue(after, Event.class);
 
+                logger.debug("Received event {}", event);
                 String key = event.getAggregateId();
                 String topic = event.getAggregateType() + "Events";
 
                 String eventId = event.getId().toString();
-                String eventType = event.getType();
-                Object payload = mapper.writeValueAsString(event.getPayload());
-
-                Schema valueSchema = SchemaBuilder.struct()
-                        .field("eventType", Schema.STRING_SCHEMA)
-                        .field("ts_ms", Schema.INT64_SCHEMA)
-                        .field("payload", Schema.STRING_SCHEMA)
-                        .build();
-
-                Struct value = new Struct(valueSchema)
-                        .put("eventType", eventType)
-                        .put("ts_ms", timestamp)
-                        .put("payload", payload);
+                String value = mapper.writeValueAsString(event);
 
                 Headers headers = record.headers();
-                headers.addString("eventId", eventId);
-
-                return record.newRecord(topic, null, Schema.STRING_SCHEMA, key, valueSchema, value,
-                        record.timestamp(), headers);
+                headers.addString(EVENT_ID, eventId);
+                logger.info("Route message key {} value {} to topic {}", key, value, topic);
+                return record.newRecord(topic, null, Schema.STRING_SCHEMA, key, Schema.STRING_SCHEMA, value, record.timestamp(), headers);
             } catch (IOException e) {
                 logger.error("Error processing event", e);
                 throw new RuntimeException(e);
