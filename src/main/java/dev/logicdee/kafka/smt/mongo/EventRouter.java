@@ -11,10 +11,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R> {
     public static final String EVENT_ID = "_EventId_";
+    public static final String DEFAULT_CLASSID_FIELD_NAME = "__TypeId__";
 
     private static final Logger logger = LoggerFactory.getLogger(EventRouter.class);
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -47,35 +49,47 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
             try {
                 Long timestamp = struct.getInt64("ts_ms");
                 String after = struct.getString("after");
-                MongoEvent mongoEvent = mapper.readValue(after, MongoEvent.class);
+                Map mongoEvent = mapper.readValue(after, Map.class);
 
-                logger.debug("Received mongoEvent {}", mongoEvent);
-                String key = mongoEvent.getAggregateId();
-                String topic = mongoEvent.getAggregateType() + "Events";
+                logger.debug("Received mongodb event {}", mongoEvent);
+                String id = (String) mongoEvent.get("_id");
+                String key = (String) mongoEvent.get("aggregateId");
+                String type = (String) mongoEvent.get("type");
+                String aggregateType = (String) mongoEvent.get("aggregateType");
+                String topic = aggregateType + "Events";
+                String payloadString = (String) mongoEvent.get("payload");
 
-                Event event = new Event();
-                event.setId(mongoEvent.getId());
-                event.setAggregateId(mongoEvent.getAggregateId());
-                event.setAggregateType(mongoEvent.getAggregateType());
-                event.setType(mongoEvent.getType());
-                if (mongoEvent.getPayload() != null && !mongoEvent.getPayload().isEmpty()) {
-                    Map payload = mapper.readValue(mongoEvent.getPayload(), Map.class);
-                    event.setPayload(payload);
+                Map<String, Object> event = new HashMap<>(mongoEvent);
+                event.remove("_id");
+
+                if (payloadString != null && !payloadString.isEmpty()) {
+                    Map payload = mapper.readValue(payloadString, Map.class);
+                    event.putAll(payload);
                 }
                 String value = mapper.writeValueAsString(event);
 
                 Headers headers = record.headers();
-                headers.addString(EVENT_ID, mongoEvent.getId());
+                headers.addString(EVENT_ID, id);
+                headers.addString(DEFAULT_CLASSID_FIELD_NAME, type);
                 logger.info("Route message key {} value {} to topic {}", key, value, topic);
-                return record.newRecord(topic, null, Schema.STRING_SCHEMA, key, Schema.STRING_SCHEMA, value, record.timestamp(), headers);
-            } catch (IOException e) {
+                return record.newRecord(
+                        topic,
+                        null,
+                        Schema.STRING_SCHEMA,
+                        key,
+                        Schema.STRING_SCHEMA,
+                        value,
+                        record.timestamp(),
+                        headers
+                );
+            } catch (Exception e) {
                 logger.error("Error processing event", e);
-                throw new RuntimeException(e);
             }
         }
         else {
-            throw new IllegalArgumentException("Record of unexpected op type: " + record);
+            logger.info("Record of unexpected op type: " + record);
         }
+        return record;
     }
 
     @Override
