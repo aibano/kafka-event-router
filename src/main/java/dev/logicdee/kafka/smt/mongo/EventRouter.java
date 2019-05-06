@@ -10,13 +10,12 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R> {
-    public static final String EVENT_ID = "_EventId_";
-    public static final String DEFAULT_CLASSID_FIELD_NAME = "__TypeId__";
+    private static final String EVENT_ID = "_EventId_";
+    private static final String DEFAULT_CLASSID_FIELD_NAME = "__TypeId__";
 
     private static final Logger logger = LoggerFactory.getLogger(EventRouter.class);
     private static final ObjectMapper mapper = new ObjectMapper();
